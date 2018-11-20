@@ -12,7 +12,6 @@ param(
     [Parameter(Mandatory = $true)]
     [Alias("x64")]
     [string]$Runtime64Zip,
-    [string]$BuildNumber = 't000',
     [switch]$IsFinalBuild,
     [string]$SignType = '',
     [switch]$clean
@@ -67,7 +66,6 @@ try {
             -clp:Summary `
             "-p:SharedFrameworkHarvestRootPath=$repoRoot/obj/sfx/" `
             "-p:Configuration=$Configuration" `
-            "-p:BuildNumber=$BuildNumber" `
             "-p:SignType=$SignType" `
             "-p:IsFinalBuild=$IsFinalBuild" `
             "-bl:$repoRoot/artifacts/logs/installers.msbuild.binlog" `

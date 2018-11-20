@@ -68,7 +68,7 @@
     </ItemGroup>
   </Target>
 
-  <Target Name="ResolveRepoInfo" DependsOnTargets="_ResolveProjectArtifactsInfoShipped;_PrepareRepositories;GetLineupPackageInfo">
+  <Target Name="ResolveRepoInfo" DependsOnTargets="_ResolveProjectArtifactsInfoShipped;_PrepareRepositories">
     <!-- We need to pass the NETCoreApp package versions to msbuild so that it doesn't complain about us using a different one than it was restored against.  -->
     <PropertyGroup>
       <DesignTimeBuildProps>$(BuildProperties);MicrosoftNETCoreAppPackageVersion=$(MicrosoftNETCoreAppPackageVersion);</DesignTimeBuildProps>
@@ -87,14 +87,14 @@
 
     <MSBuild Projects="@(_RepositoryProject)"
              Targets="GetArtifactInfo"
-             Properties="$(DesignTimeBuildProps);Configuration=$(Configuration);BuildNumber=$(BuildNumber);DesignTimeBuild=true;"
+             Properties="$(DesignTimeBuildProps);Configuration=$(Configuration);DesignTimeBuild=true;"
              BuildInParallel="true">
       <Output TaskParameter="TargetOutputs" ItemName="ArtifactInfo" />
     </MSBuild>
 
     <MSBuild Projects="@(ProjectToBuild)"
              Targets="GetArtifactInfo"
-             Properties="$(DesignTimeBuildProps);Configuration=$(Configuration);BuildNumber=$(BuildNumber);DesignTimeBuild=true"
+             Properties="$(DesignTimeBuildProps);Configuration=$(Configuration);DesignTimeBuild=true"
              SkipNonexistentTargets="true"
              BuildInParallel="true">
       <Output TaskParameter="TargetOutputs" ItemName="ArtifactInfo" />
@@ -102,7 +102,7 @@
 
     <MSBuild Projects="@(_RepositoryProject)"
              Targets="ResolveSolutions"
-             Properties="$(DesignTimeBuildProps);Configuration=$(Configuration);BuildNumber=$(BuildNumber)"
+             Properties="$(DesignTimeBuildProps);Configuration=$(Configuration)"
              ContinueOnError="WarnAndContinue"
              BuildInParallel="true"
              Condition="@(_RepositoryProject->Count()) != 0">
@@ -116,14 +116,14 @@
     -->
     <MSBuild Projects="$(MSBuildProjectFullPath)"
              Targets="GetArtifactInfo"
-             Properties="$(DesignTimeBuildProps);RepositoryRoot=%(ShippedRepository.RootPath);Configuration=$(Configuration);BuildNumber=$(BuildNumber);IsFinalBuild=true;DesignTimeBuild=true"
+             Properties="$(DesignTimeBuildProps);RepositoryRoot=%(ShippedRepository.RootPath);Configuration=$(Configuration);IsFinalBuild=true;DesignTimeBuild=true"
              ContinueOnError="WarnAndContinue"
              Condition="'%(ShippedRepository.Identity)' != ''">
       <Output TaskParameter="TargetOutputs" ItemName="ShippedArtifactInfo" />
     </MSBuild>
     <MSBuild Projects="$(MSBuildProjectFullPath)"
              Targets="ResolveSolutions"
-             Properties="RepositoryRoot=%(ShippedRepository.RootPath);Configuration=$(Configuration);BuildNumber=$(BuildNumber)"
+             Properties="RepositoryRoot=%(ShippedRepository.RootPath);Configuration=$(Configuration)"
              ContinueOnError="WarnAndContinue"
              Condition="'%(ShippedRepository.Identity)' != ''">
       <Output TaskParameter="TargetOutputs" ItemName="_ShippedSolution" />
@@ -174,19 +174,6 @@
     <Error Text="No solutions were found in '$(SubmoduleRoot)'. Did you forget to clone the submodules? Run `git submodule update --init`." Condition="@(Solution->Count()) == 0" />
   </Target>
 
-  <Target Name="GetLineupPackageInfo">
-    <ItemGroup>
-      <ArtifactInfo Include="$(BuildDir)Internal.AspNetCore.Universe.Lineup.$(PackageVersion).nupkg">
-        <ArtifactType>NuGetPackage</ArtifactType>
-        <PackageId>Internal.AspNetCore.Universe.Lineup</PackageId>
-        <Version>$(PackageVersion)</Version>
-        <Category>noship</Category>
-        <IsLineup>true</IsLineup>
-      </ArtifactInfo>
-      <FilesToSign Include="$(BuildDir)Internal.AspNetCore.Universe.Lineup.$(PackageVersion).nupkg" Certificate="$(PackageSigningCertName)" />
-    </ItemGroup>
-  </Target>
-
   <Target Name="GeneratePropsFiles" DependsOnTargets="PrepareOutputPaths;GetArtifactInfo">
     <ItemGroup>
       <_LineupPackages Include="@(ExternalDependency)" />
@@ -207,36 +194,6 @@
     <RepoTasks.GenerateRestoreSourcesPropsFile
       Sources="@(_RestoreSources)"
       OutputPath="$(GeneratedRestoreSourcesPropsPath)" />
-
-    <PropertyGroup>
-      <!-- Generate an MSBuild file that can be imported and used by Windows Installer builds to keep our versions consistent. -->
-      <BrandingPropsContent>
-<![CDATA[
-<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <PropertyGroup>
-    <AspNetCoreMajorVersion>$(AspNetCoreMajorVersion)</AspNetCoreMajorVersion>
-    <AspNetCoreMinorVersion>$(AspNetCoreMinorVersion)</AspNetCoreMinorVersion>
-    <AspNetCorePatchVersion>$(AspNetCorePatchVersion)</AspNetCorePatchVersion>
-    <AspNetCorePreReleaseVersionLabel>$(PreReleaseLabel)</AspNetCorePreReleaseVersionLabel>
-    <AspNetCoreBuildNumber>$(BuildNumber)</AspNetCoreBuildNumber>
-    <AspNetCoreBrandingVersion>$(PackageBrandingVersion)</AspNetCoreBrandingVersion>
-  </PropertyGroup>
-</Project>
-]]>
-      </BrandingPropsContent>
-    </PropertyGroup>
-
-    <WriteLinesToFile File="$(GeneratedBrandingPropsPath)" Overwrite="true" Lines="$(BrandingPropsContent)"/>
-
-    <Copy SourceFiles="$(GeneratedPackageVersionPropsPath);$(GeneratedBrandingPropsPath)" DestinationFolder="$(ArtifactsDir)" />
-
-    <PackNuSpec NuSpecPath="$(MSBuildThisFileDirectory)lineups\Internal.AspNetCore.Universe.Lineup.nuspec"
-                DestinationFolder="$(BuildDir)"
-                Overwrite="true"
-                Properties="version=$(PackageVersion);dependenciesPropsFile=$(GeneratedPackageVersionPropsPath);brandingPropsFile=$(GeneratedBrandingPropsPath)">
-      <Output TaskParameter="Packages" ItemName="LineupPackage" />
-    </PackNuSpec>
   </Target>
 
   <Target Name="CleanRepoArtifacts">
